@@ -1,32 +1,42 @@
 class Mastermind
-  attr_reader :computer, :user
+  attr_reader :maker, :breaker, :game_mode
 
   WELCOME_MESSAGE = "\n\t\t\tWELCOME TO MASTERMIND\n\n  If you play as the Codemaker, you have to pick four colors from the following options:\n
   \t[R]ed, [G]reen, [Y]ellow, [O]range, [B]lack, [W]hite\n
-  Use only the color's initial to input your code, or your guesses if you are playing as the codebreaker.\n
-  You will be playing as the Codebreaker against the computer. You have 12 turns to figure out the secret code.
-   "
+  Use only the color's initial to input your code, or your guesses if you are playing as the codebreaker. The codebreaker has 12 turns
+  to figure out the secret code.\n
+  Would you like to be the Codemaker[M] or the Codebreaker[B]? >> "
   CODE_OPTIONS = %w[R G Y O B W]
 
   def initialize
-    puts WELCOME_MESSAGE
-    @computer = Codemaker.new
-    @user = Codebreaker.new(@computer.code)
-    puts won?(user.tries)
-    # @game_mode = gets.chomp.upcase
+    print WELCOME_MESSAGE
+    @game_mode = gets.chomp.upcase
+    @maker = Codemaker.new(game_mode)
+    @breaker = Codebreaker.new(maker.code)
+    puts out_of_tries(breaker.tries)
   end
 
-  def won?(tries)
-    "\n  You ran out of tries. The secret code was #{computer.code}" if tries == 12
+  def out_of_tries(tries)
+    "\n  You ran out of tries. The secret code was #{maker.code}" if tries == 12
   end
 end
 
 class Codemaker < Mastermind
   attr_reader :code
 
-  def initialize
-    @code = CODE_OPTIONS.sample(4)
+  def initialize(game_mode)
+    if game_mode == 'B'
+      @code = CODE_OPTIONS.sample(4)
+    else
+      input_code
+    end
   end
+
+  def input_code
+    print "\n  Enter your secret code (use 4 different colors)>> "
+    @code = gets.chomp.upcase.split('')
+  end
+
 end
 
 class Codebreaker
@@ -57,7 +67,7 @@ class Codebreaker
         if color == secret_code[i]
           self.correct_pos += 1
         elsif secret_code.any?(color)
-          self.correct_color +=1
+          self.correct_color += 1
         end
       end
       false
@@ -77,7 +87,8 @@ class Codebreaker
       print "\n  \##{turn + 1}. Please enter your guess>> "
       @guess = gets.chomp.upcase.split('')
       if decoded?
-        feedback
+        puts "  "
+        print "   #{guess}"
         puts "\n  Congratulations! You cracked the code!"
         break
       end
