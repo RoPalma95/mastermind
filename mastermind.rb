@@ -1,23 +1,57 @@
+require 'pry'
+# require 'io/console'
+
 class Mastermind
   attr_reader :maker, :breaker, :game_mode
 
   WELCOME_MESSAGE = "\n\t\t\tWELCOME TO MASTERMIND\n\n  If you play as the Codemaker, you have to pick four colors from the following options:\n
   \t[R]ed, [G]reen, [Y]ellow, [O]range, [B]lack, [W]hite\n
-  Use only the color's initial to input your code, or your guesses if you are playing as the codebreaker. The codebreaker has 12 turns
-  to figure out the secret code.\n
-  Would you like to be the Codemaker[M] or the Codebreaker[B]? >> "
+  Use only the color's initial to input your code, or your guesses if you are playing as the codebreaker. The codebreaker has 12 turns to figure
+  out the secret code. An asterisk (*) will indicate that a color is in the correct position. A plus sign (+) will indicate that a color
+  is in the wrong position, but is part of the solution.\n
+  Would you like to be the Codemaker[M] or the Codebreaker[B]? (Press any other key to exit game) >> "
   CODE_OPTIONS = %w[R G Y O B W]
 
   def initialize
     print WELCOME_MESSAGE
     @game_mode = gets.chomp.upcase
-    @maker = Codemaker.new(game_mode)
-    @breaker = Codebreaker.new(maker.code)
-    puts out_of_tries(breaker.tries)
+    if game_mode == 'M' || game_mode == 'B'
+      @maker = Codemaker.new(game_mode)
+      @breaker = Codebreaker.new(game_mode, maker.code)
+      puts out_of_tries(breaker.tries)
+    else
+      puts "\n  Exiting game..."
+      sleep 1
+    end
   end
 
   def out_of_tries(tries)
-    "\n  You ran out of tries. The secret code was #{maker.code}" if tries == 12
+    "\n  You ran out of tries. The secret code was #{maker.code}" if tries == 12 && game_mode == 'B'
+    "\n  Good Job! The computer couldn't crack your code!" if tries == 12 && game_mode == 'M'
+  end
+
+  def decoded?
+    if guess.eql?(secret_code)
+      true
+    else
+      self.correct_pos, self.correct_color = [], 0
+      guess.each_with_index do |color, i|
+        if color == secret_code[i]
+          self.correct_pos.push(color)
+        elsif secret_code.any?(color)
+          self.correct_color += 1
+        end
+      end
+      false
+    end
+  end
+
+  def feedback
+    puts "  "
+    print "   #{guess}"
+    print "    ", "*" * correct_pos.length
+    print '+' * correct_color
+    puts "  "
   end
 end
 
@@ -35,14 +69,15 @@ class Codemaker < Mastermind
   def input_code
     print "\n  Enter your secret code (use 4 different colors)>> "
     @code = gets.chomp.upcase.split('')
+    # @code = STDIN.noecho(&:gets).chomp.upcase.split('')
   end
 
 end
 
-class Codebreaker
+class Codebreaker < Mastermind
   private
 
-  attr_accessor :correct_color, :correct_pos
+  attr_accessor :correct_color, :correct_pos, :current_guess
   attr_reader :guess, :secret_code
   attr_writer :tries
 
@@ -50,36 +85,32 @@ class Codebreaker
 
   attr_reader :tries
 
-  def initialize(secret_code)
+  def initialize(game_mode, secret_code)
     @secret_code = secret_code
     @correct_color = 0
-    @correct_pos = 0
+    @correct_pos = []
     @tries = 0
-    make_guess
-  end
-
-  def decoded?
-    if guess.eql?(secret_code)
-      true
+    if game_mode == 'B'
+      make_guess
     else
-      self.correct_pos, self.correct_color = 0, 0
-      guess.each_with_index do |color, i|
-        if color == secret_code[i]
-          self.correct_pos += 1
-        elsif secret_code.any?(color)
-          self.correct_color += 1
-        end
-      end
-      false
+      @current_guess = []
+      computer_guess
     end
   end
 
-  def feedback
-    puts "  "
-    print "   #{guess}"
-    print "    ", "*" * correct_pos
-    print '+' * correct_color
-    puts "  "
+  def auto_guess
+    if tries == 0
+      self.current_guess = CODE_OPTIONS.sample(4)
+    elsif correct_color + correct_pos.length == 4
+      self.current_guess = current_guess.shuffle
+    else
+      available_colors = CODE_OPTIONS.difference(current_guess)
+      self.current_guess = current_guess.sample(correct_pos.length + correct_color)
+      if current_guess.length < 4
+        self.current_guess.push(available_colors.sample(4 - current_guess.length))
+      end
+    end
+    self.current_guess = current_guess.flatten
   end
 
   def make_guess
@@ -89,11 +120,28 @@ class Codebreaker
       if decoded?
         puts "  "
         print "   #{guess}"
-        puts "\n  Congratulations! You cracked the code!"
+        puts "\n\n  Congratulations! You cracked the code!"
         break
       end
       feedback
       self.tries += 1
+    end
+  end
+
+  def computer_guess
+    12.times do |turn|
+      print "\n  \##{turn + 1}. Computer's guess>> "
+      auto_guess
+      @guess = self.current_guess
+      if decoded?
+        puts "  "
+        print "   #{guess}"
+        puts "\n  Too bad! The computer cracked your code!"
+        break
+      end
+      feedback
+      self.tries += 1
+      sleep 0.5
     end
   end
 end
