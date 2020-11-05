@@ -10,7 +10,8 @@ class Mastermind
   out the secret code. An asterisk (*) will indicate that a color is in the correct position. A plus sign (+) will indicate that a color
   is in the wrong position, but is part of the solution.\n
   Would you like to be the Codemaker[M] or the Codebreaker[B]? (Press any other key to exit game) >> "
-  CODE_OPTIONS = %w[R G Y O B W]
+
+  CODE_OPTIONS = %w[R G Y O B W].freeze
 
   def initialize
     print WELCOME_MESSAGE
@@ -34,10 +35,11 @@ class Mastermind
     if guess.eql?(secret_code)
       true
     else
-      self.correct_pos, self.correct_color = [], 0
+      @correct_pos = []
+      @correct_color = 0
       guess.each_with_index do |color, i|
         if color == secret_code[i]
-          self.correct_pos.push(color)
+          correct_pos.push(color)
         elsif secret_code.any?(color)
           self.correct_color += 1
         end
@@ -47,11 +49,11 @@ class Mastermind
   end
 
   def feedback
-    puts "  "
+    puts '  '
     print "   #{guess}"
-    print "    ", "*" * correct_pos.length
+    print '    ', '*' * correct_pos.length
     print '+' * correct_color
-    puts "  "
+    puts '  '
   end
 end
 
@@ -71,7 +73,6 @@ class Codemaker < Mastermind
     @code = gets.chomp.upcase.split('')
     # @code = STDIN.noecho(&:gets).chomp.upcase.split('')
   end
-
 end
 
 class Codebreaker < Mastermind
@@ -87,8 +88,6 @@ class Codebreaker < Mastermind
 
   def initialize(game_mode, secret_code)
     @secret_code = secret_code
-    @correct_color = 0
-    @correct_pos = []
     @tries = 0
     if game_mode == 'B'
       make_guess
@@ -99,16 +98,14 @@ class Codebreaker < Mastermind
   end
 
   def auto_guess
-    if tries == 0
+    if tries.zero?
       self.current_guess = CODE_OPTIONS.sample(4)
     elsif correct_color + correct_pos.length == 4
       self.current_guess = current_guess.shuffle
     else
       available_colors = CODE_OPTIONS.difference(current_guess)
       self.current_guess = current_guess.sample(correct_pos.length + correct_color)
-      if current_guess.length < 4
-        self.current_guess.push(available_colors.sample(4 - current_guess.length))
-      end
+      current_guess.push(available_colors.sample(4 - current_guess.length)) if current_guess.length < 4
     end
     self.current_guess = current_guess.flatten
   end
@@ -118,7 +115,7 @@ class Codebreaker < Mastermind
       print "\n  \##{turn + 1}. Please enter your guess>> "
       @guess = gets.chomp.upcase.split('')
       if decoded?
-        puts "  "
+        puts '  '
         print "   #{guess}"
         puts "\n\n  Congratulations! You cracked the code!"
         break
@@ -132,9 +129,9 @@ class Codebreaker < Mastermind
     12.times do |turn|
       print "\n  \##{turn + 1}. Computer's guess>> "
       auto_guess
-      @guess = self.current_guess
+      @guess = current_guess
       if decoded?
-        puts "  "
+        puts '  '
         print "   #{guess}"
         puts "\n  Too bad! The computer cracked your code!"
         break
